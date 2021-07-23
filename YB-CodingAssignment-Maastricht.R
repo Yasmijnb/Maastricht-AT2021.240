@@ -75,7 +75,6 @@ edge.list[which(is.na(edge.list$gene)),] <- ""
 
 # Connect to cytoscape (should be opened!)
 cytoscapePing()
-cytoscapeVersionInfo()
 
 # Create a dataframe with all rsIDs and genes
 nodes <- data.frame(id = c(unique(edge.list$rsID), unique(edge.list$gene)),
@@ -90,3 +89,28 @@ edges <- data.frame(source = edge.list$rsID[-which(edge.list$gene == "")],
 # Open the network in cytoscape
 createNetworkFromDataFrames(nodes, edges, title = "var and genes", 
                             collection = "YB_AT2021.240")
+
+# Create style
+style.name = "myStyle"
+defaults <- list(NODE_SHAPE = "circle",
+                 NODE_SIZE = 70,
+                 EDGE_TRANSPARENCY = 120,
+                 NODE_LABEL_COLOR="#FFFFFF",
+                 NODE_BORDER_PAINT="#FFFFFF")
+nodeLabels <- mapVisualProperty('node label','id','p')
+nodeFills <- mapVisualProperty('node fill color','group','d',c("rs","gene"), c("#56B4E9","#E69F00"))
+# Apply style
+createVisualStyle(style.name, defaults, list(nodeLabels, nodeFills))
+setVisualStyle(style.name)
+
+################################################################################
+
+## Step 3: Add known pathways
+
+################################################################################
+
+## Step 4: Save session and image
+
+saveSession('YB_AT2021240_session')
+full.path = paste(getwd(),'YB_AT2021240_image', sep = '/')
+exportImage(full.path, 'PNG')
