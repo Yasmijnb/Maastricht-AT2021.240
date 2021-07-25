@@ -1,6 +1,7 @@
 ################################################################################
 
 # Yasmijn Balder
+# 25-07-2021
 # Coding assignment for PhD position AT2021.240 in Maastricht
 
 ################################################################################
@@ -22,9 +23,9 @@ variants <- read.csv("./variant_list.txt", col.names = 'rsID', header = FALSE)
 variants$gene <- rep('', nrow(variants))
 
 # Create bioMart database
-listEnsembl()
-variation = useEnsembl(biomart = "snps")
-listDatasets(variation)
+# listEnsembl()
+# variation = useEnsembl(biomart = "snps")
+# listDatasets(variation)
 variation = useEnsembl(biomart = "snps", dataset = "hsapiens_snp", 
                        mirror = 'uswest')
 
@@ -87,8 +88,10 @@ nodes <- data.frame(id = c(unique(edge.list$rsID),
                               rep('gene', length(unique(edge.list$gene)[- which(unique(edge.list$gene) == "")]))),
                     stringsAsFactors = FALSE)
 # Create a dataframe to explain the edges
-edges <- data.frame(source = edge.list[-which(edge.list$gene == ""),]$rsID, 
-                    target = edge.list[-which(edge.list$gene == ""),]$gene,
+edge.list <- edge.list[-which(edge.list$gene == ""),]
+edges <- data.frame(source = edge.list$rsID, 
+                    target = edge.list$gene,
+                    interaction = rep("interacts", nrow(edge.list)),
                     stringsAsFactors = FALSE)
 
 # Open the network in cytoscape
@@ -116,8 +119,8 @@ setVisualStyle(style.name)
 # Make sure the cytoscape app is installed
 installApp('WikiPathways')
 
-# Extend the network in cytoscape with the pathways
-extend.cmd = paste('cytargetlinker extend idAttribute="id" linkSetDirectory="', 
+# Extend the network in cytoscape with the pathways (this step doesn't work)
+extend.cmd = paste('cytargetlinker extend idAttribute="shared name" linkSetDirectory="', 
                    paste(getwd(), 'LinkSets', sep = '/'),
                    '" network=current direction=TARGETS', sep="")
 commandsRun(extend.cmd)
