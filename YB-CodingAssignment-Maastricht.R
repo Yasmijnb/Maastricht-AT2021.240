@@ -9,6 +9,7 @@
 library(biomaRt)
 library(RCy3)
 library(stringr)
+library(rWikiPathways)
 
 # Import data
 variants <- read.csv("./variant_list.txt", col.names = 'rsID', header = FALSE)
@@ -24,7 +25,8 @@ variants$gene <- rep('', nrow(variants))
 listEnsembl()
 variation = useEnsembl(biomart = "snps")
 listDatasets(variation)
-variation = useEnsembl(biomart = "snps", dataset = "hsapiens_snp", mirror = 'uswest')
+variation = useEnsembl(biomart = "snps", dataset = "hsapiens_snp", 
+                       mirror = 'uswest')
 
 # Create an empty data frame to store hits of rs with multiple genes associated
 multiple.hits <- data.frame('','')
@@ -64,10 +66,10 @@ for (rsnum in 1:nrow(variants)) {
 
 # Combine the first hits and additional hits to obtain them all
 edge.list <- rbind(variants, multiple.hits)
-# Remove empty row
-edge.list <- edge.list[-which(edge.list$rsID == ""),]
 # Turn NA gene entry into empty entry
 edge.list[which(is.na(edge.list$gene)),] <- ""
+# Remove empty row
+edge.list <- edge.list[-which(edge.list$rsID == ""),]
 
 ################################################################################
 
@@ -77,13 +79,16 @@ edge.list[which(is.na(edge.list$gene)),] <- ""
 cytoscapePing()
 
 # Create a dataframe with all rsIDs and genes
-nodes <- data.frame(id = c(unique(edge.list$rsID), unique(edge.list$gene)),
-                   group = c(rep('rs', length(unique(edge.list$rsID))),
-                             rep('gene', length(unique(edge.list$gene)))),
-                   stringsAsFactors = FALSE)
+nodes <- data.frame(id = c(unique(edge.list$rsID), 
+                           # Don't create empty nodes for genes
+                           unique(edge.list$gene)[-which(unique(edge.list$gene) == "")]),
+                    group = c(rep('rs', length(unique(edge.list$rsID))),
+                              # Don't create empty nodes for genes
+                              rep('gene', length(unique(edge.list$gene)[- which(unique(edge.list$gene) == "")]))),
+                    stringsAsFactors = FALSE)
 # Create a dataframe to explain the edges
-edges <- data.frame(source = edge.list$rsID[-which(edge.list$gene == "")], 
-                    target = edge.list$gene[-which(edge.list$gene == "")],
+edges <- data.frame(source = edge.list[-which(edge.list$gene == ""),]$rsID, 
+                    target = edge.list[-which(edge.list$gene == ""),]$gene,
                     stringsAsFactors = FALSE)
 
 # Open the network in cytoscape
@@ -98,7 +103,8 @@ defaults <- list(NODE_SHAPE = "circle",
                  NODE_LABEL_COLOR="#FFFFFF",
                  NODE_BORDER_PAINT="#FFFFFF")
 nodeLabels <- mapVisualProperty('node label','id','p')
-nodeFills <- mapVisualProperty('node fill color','group','d',c("rs","gene"), c("#56B4E9","#E69F00"))
+nodeFills <- mapVisualProperty('node fill color','group','d',c("rs","gene"), 
+                               c("#56B4E9","#E69F00"))
 # Apply style
 createVisualStyle(style.name, defaults, list(nodeLabels, nodeFills))
 setVisualStyle(style.name)
@@ -107,10 +113,28 @@ setVisualStyle(style.name)
 
 ## Step 3: Add known pathways
 
+# Make sure the cytoscape app is installed
+installApp('WikiPathways')
+
+# Extend the network in cytoscape with the pathways
+extend.cmd = paste('cytargetlinker extend idAttribute="id" linkSetDirectory="', 
+                   paste(getwd(), 'LinkSets', sep = '/'),
+                   '" network=current direction=TARGETS', sep="")
+commandsRun(extend.cmd)
+layoutNetwork()
+
+# Filter out genes without any pathway information
+filter1.cmd = "network select edgeList=all"
+filter2.cmd = "network select extendEdges=true"
+filter3.cmd = "network create nodeList=selected edgeList=selected networkName=selection source=current"
+commandsRun(filter1.cmd)
+commandsRun(filter2.cmd)
+commandsRun(filter3.cmd)
+
 ################################################################################
 
 ## Step 4: Save session and image
 
 saveSession('YB_AT2021240_session')
-full.path = paste(getwd(),'YB_AT2021240_image', sep = '/')
-exportImage(full.path, 'PNG')
+png.path = paste(getwd(),'YB_AT2021240_image', sep = '/')
+exportImage(png.path, 'PNG')
